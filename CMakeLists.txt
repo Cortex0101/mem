@@ -3,4 +3,4 @@ project(mem C)
 
 set(CMAKE_C_STANDARD 99)
 
-add_executable(mem main.c)
+add_executable(mem mymem.c linked_list.h linked_list.c memorytests.c)

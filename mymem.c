@@ -5,16 +5,17 @@
 #include "mymem.h"
 #include <time.h>
 
+#include "linked_list.h"
 
 /* The main structure for implementing memory allocation.
  * You may change this to fit your implementation.
  */
 
-struct memoryList
+struct memBlock
 {
   // doubly-linked list
-  struct memoryList *last;
-  struct memoryList *next;
+  struct memBlock *last;
+  struct memBlock *next;
 
   int size;            // How many bytes in this block?
   char alloc;          // 1 if this block is allocated,
@@ -28,8 +29,26 @@ strategies myStrategy = NotSet;    // Current strategy
 size_t mySize;
 void *myMemory = NULL;
 
-static struct memoryList *head;
-static struct memoryList *next;
+static struct memBlock *head;
+static struct memBlock *next;
+
+
+void create_list(size_t capacity) {
+    linkedList = malloc(sizeof(LinkedList)) ;
+    linkedList -> head = NULL ;
+    linkedList -> tail = NULL ;
+
+    insert_first(capacity, '0', myMemory);
+}
+
+struct memBlock* createMemblock(struct memBlock* last, struct memBlock* next, int size, char alloc) {
+    struct memBlock* block = malloc(sizeof(struct memBlock));
+    block->last = last;
+    block->next = next;
+    block->size = size;
+    block->alloc = alloc;
+    block->ptr = last->ptr + last->size;
+}
 
 
 /* initmem must be called prior to mymalloc and myfree.
@@ -53,16 +72,16 @@ void initmem(strategies strategy, size_t sz)
 	/* all implementations will need an actual block of memory to use */
 	mySize = sz;
 
-	if (myMemory != NULL) free(myMemory); /* in case this is not the first time initmem2 is called */
+	if (myMemory != NULL)
+        free(myMemory); /* in case this is not the first time initmem2 is called */
 
 	/* TODO: release any other memory you were using for bookkeeping when doing a re-initialization! */
-
-
-	myMemory = malloc(sz);
+    free(head);
+    free(linkedList);
 	
 	/* TODO: Initialize memory management structure. */
-
-
+    myMemory = malloc(sz);
+    create_list(mySize);
 }
 
 /* Allocate a block of memory with the requested size.
@@ -71,16 +90,28 @@ void initmem(strategies strategy, size_t sz)
  *  Restriction: requested >= 1 
  */
 
+// First-fit: select the first suitable block with smallest address.
+void *allocFirst(size_t requested)
+{
+    Node* node = find_first_node_with_capacity(requested);
+    void* location = node->ptr;
+    insert_before(node, requested, '1', node->ptr);
+    node->ptr += requested;
+    node->size -= requested;
+
+    return location;
+}
+
 void *mymalloc(size_t requested)
 {
 	assert((int)myStrategy > 0);
-	
+
 	switch (myStrategy)
 	  {
 	  case NotSet: 
 	            return NULL;
 	  case First:
-	            return NULL;
+	            return allocFirst(requested);
 	  case Best:
 	            return NULL;
 	  case Worst:
@@ -95,7 +126,15 @@ void *mymalloc(size_t requested)
 /* Frees a block of memory previously allocated by mymalloc. */
 void myfree(void* block)
 {
-	return;
+    remove_node_with_ptr(block);
+    while (true) {
+        Node* node = find_adjecent_unallocated_nodes();
+        if (node == NULL) {
+            return;
+        } else {
+            remove_node_with_ptr(node->ptr);
+        }
+    }
 }
 
 /****** Memory status/property functions ******
@@ -107,36 +146,84 @@ void myfree(void* block)
 /* Get the number of contiguous areas of free space in memory. */
 int mem_holes()
 {
-	return 0;
+    int holes = 0;
+    Node* last;
+    Node* node = linkedList->head;
+    while (node != NULL) {
+        if (node->alloc == '0' && node->ptr < myMemory + mySize) {
+            ++holes;
+        }
+
+        last = node;
+        node = node->next;
+    }
+    return holes;
 }
 
 /* Get the number of bytes allocated */
 int mem_allocated()
 {
-	return 0;
+    int allocated = 0;
+    Node* last;
+    Node* node = linkedList->head;
+    while (node != NULL) {
+        if (node->alloc == '1') {
+            allocated += node->size;
+        }
+
+        last = node;
+        node = node->next;
+    }
+
+    return allocated;
 }
 
 /* Number of non-allocated bytes */
 int mem_free()
 {
-	return 0;
+	return mem_total() - mem_allocated();
 }
 
 /* Number of bytes in the largest contiguous area of unallocated memory */
 int mem_largest_free()
 {
-	return 0;
+    int largest_unallocated = 0;
+    Node* last;
+    Node* node = linkedList->head;
+    while (node != NULL) {
+        if (node->alloc == '0') {
+            if (node->size > largest_unallocated) {
+                largest_unallocated = node->size;
+            }
+        }
+
+        last = node;
+        node = node->next;
+    }
+    return largest_unallocated;
 }
 
-/* Number of free blocks smaller than "size" bytes. */
+/* Number of free blocks smaller OR EQUAL TO than "size" bytes. */
 int mem_small_free(int size)
 {
-	return 0;
-}       
+    int blocks_smaller_than_size = 0;
+    Node* last;
+    Node* node = linkedList->head;
+    while (node != NULL) {
+        if (node->alloc == "0" && node->size <= size) {
+            blocks_smaller_than_size++;
+        }
+
+        last = node;
+        node = node->next;
+    }
+}
+
+/* Is a particular byte allocated or not? */
 
 char mem_is_alloc(void *ptr)
 {
-        return 0;
+    return 0;
 }
 
 /* 
@@ -210,7 +297,27 @@ strategies strategyFromString(char * strategy)
 /* Use this function to print out the current contents of memory. */
 void print_memory()
 {
-	return;
+    Node* last;
+    Node* node = linkedList->head;
+    printf("[");
+    while (node != NULL) {
+        printf("(size: %i, allocated: %c, location: %i), ", node->size, node->alloc, node->ptr);
+        last = node;
+        node = node->next;
+    }
+    printf("]\n\n");
+}
+
+void print_short() {
+    Node* last;
+    Node* node = linkedList->head;
+    printf("[");
+    while (node != NULL) {
+        printf("(%i, %c, %i), ", node->size, node->alloc, node->ptr - myMemory);
+        last = node;
+        node = node->next;
+    }
+    printf("]\n\n");
 }
 
 /* Use this function to track memory allocation performance.  
@@ -252,5 +359,22 @@ void try_mymem(int argc, char **argv) {
 	
 	print_memory();
 	print_memory_status();
-	
 }
+
+
+/*
+int main() {
+    initmem(strategyFromString("first"), 500);
+    print_short();
+    void* a = mymalloc(100);
+    print_short();
+    void* b = mymalloc(100);
+    print_short();
+    void* c = mymalloc(100);
+    print_short();
+    myfree(b);
+    print_short();
+    myfree(c);
+    print_short();
+}
+ */
