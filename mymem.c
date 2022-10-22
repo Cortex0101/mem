@@ -150,7 +150,7 @@ int mem_holes()
     Node* last;
     Node* node = linkedList->head;
     while (node != NULL) {
-        if (node->alloc == '0' && node->ptr < myMemory + mySize) {
+        if (node->alloc == '0' && node->ptr < myMemory + mySize && node->size != 0) {
             ++holes;
         }
 
@@ -210,20 +210,33 @@ int mem_small_free(int size)
     Node* last;
     Node* node = linkedList->head;
     while (node != NULL) {
-        if (node->alloc == "0" && node->size <= size) {
+        if (node->alloc == '0' && node->size <= size) {
             blocks_smaller_than_size++;
         }
 
         last = node;
         node = node->next;
     }
+
+    return blocks_smaller_than_size;
 }
 
 /* Is a particular byte allocated or not? */
 
 char mem_is_alloc(void *ptr)
 {
-    return 0;
+    Node* last;
+    Node* node = linkedList->head;
+    while (node != NULL) {
+        if ((node->alloc == '1') && (node->ptr >= ptr && ptr <= node->ptr + node->size)) {
+            return '1';
+        }
+
+        last = node;
+        node = node->next;
+    }
+
+    return '0';
 }
 
 /* 
@@ -362,8 +375,304 @@ void try_mymem(int argc, char **argv) {
 }
 
 
-/*
+// aasdfa
+
+int test_alloc_1(const char* strat_str) {
+    strategies strategy;
+    int lbound = 1;
+    int ubound = 4;
+    const char* strat = "first";
+
+    if (strategyFromString(strat_str))
+        lbound=ubound=strategyFromString(strat_str);
+
+    for (strategy = lbound; strategy <= ubound; strategy++)
+    {
+        int correct_holes = 0;
+        int correct_alloc = 100;
+        int correct_largest_free = 0;
+        int i;
+
+        void* lastPointer = NULL;
+        initmem(strategy,100);
+        for (i = 0; i < 100; i++)
+        {
+            void* pointer = mymalloc(1);
+            if ( i > 0 && pointer != (lastPointer+1) )
+            {
+                printf("Allocation with %s was not sequential at %i; expected %p, actual %p\n", strategy_name(strategy), i,lastPointer+1,pointer);
+                return 1;
+            }
+            lastPointer = pointer;
+        }
+
+        if (mem_holes() != correct_holes)
+        {
+            printf("Holes not counted as %d with %s\n", correct_holes, strategy_name(strategy));
+            return	1;
+        }
+
+        if (mem_allocated() != correct_alloc)
+        {
+            printf("Allocated memory not reported as %d with %s\n", correct_alloc, strategy_name(strategy));
+            return	1;
+        }
+
+        if (mem_largest_free() != correct_largest_free)
+        {
+            printf("Largest memory block free not reported as %d with %s\n", correct_largest_free, strategy_name(strategy));
+            return	1;
+        }
+
+    }
+
+    return 0;
+}
+
+int test_alloc_2(const char* strat_str) {
+    strategies strategy;
+    int lbound = 1;
+    int ubound = 4;
+
+    if (strategyFromString(strat_str))
+        lbound=ubound=strategyFromString(strat_str);
+
+    for (strategy = lbound; strategy <= ubound; strategy++)
+    {
+        int correct_holes;
+        int correct_alloc;
+        int correct_largest_free;
+        int correct_small;
+        void* first;
+        void* second;
+        void* third;
+        int correctThird;
+
+        initmem(strategy,100);
+
+        first = mymalloc(10);
+        second = mymalloc(1);
+        myfree(first);
+        third = mymalloc(1);
+
+        if (second != (first+10))
+        {
+            printf("Second allocation failed; allocated at incorrect offset with strategy %s", strategy_name(strategy));
+            return 1;
+        }
+
+        correct_alloc = 2;
+        correct_small = (strategy == First || strategy == Best);
+
+        switch (strategy)
+        {
+            case Best:
+                correctThird = (third == first);
+                correct_holes = 2;
+                correct_largest_free = 89;
+                break;
+            case Worst:
+                correctThird = (third == second+1);
+                correct_holes = 2;
+                correct_largest_free = 88;
+                break;
+            case First:
+                correctThird = (third == first);
+                correct_holes = 2;
+                correct_largest_free = 89;
+                break;
+            case Next:
+                correctThird = (third == second+1);
+                correct_holes = 2;
+                correct_largest_free = 88;
+                break;
+            case NotSet:
+                break;
+        }
+
+        if (!correctThird)
+        {
+            printf("Third allocation failed; allocated at incorrect offset with %s", strategy_name(strategy));
+            return 1;
+        }
+
+        if (mem_holes() != correct_holes)
+        {
+            printf("Holes counted as %d, should be %d with %s\n", mem_holes(), correct_holes, strategy_name(strategy));
+            return	1;
+        }
+
+        if (mem_small_free(9) != correct_small)
+        {
+            printf("Small holes counted as %d, should be %d with %s\n", mem_small_free(9), correct_small, strategy_name(strategy));
+            return	1;
+        }
+
+        if (mem_allocated() != correct_alloc)
+        {
+            printf("Memory reported as %d, should be %d with %s\n", mem_allocated(0), correct_alloc, strategy_name(strategy));
+            return	1;
+        }
+
+        if (mem_largest_free() != correct_largest_free)
+        {
+            printf("Largest memory block free reported as %d, should be %d with %s\n", mem_largest_free(), correct_largest_free, strategy_name(strategy));
+            return	1;
+        }
+
+    }
+
+    return 0;
+}
+
+
+int test_alloc_3(const char* strat_str) {
+    strategies strategy;
+    int lbound = 1;
+    int ubound = 4;
+
+    if (strategyFromString(strat_str))
+        lbound=ubound=strategyFromString(strat_str);
+
+    for (strategy = lbound; strategy <= ubound; strategy++)
+    {
+        int correct_holes = 50;
+        int correct_alloc = 50;
+        int correct_largest_free = 1;
+        int i;
+
+        void* lastPointer = NULL;
+        initmem(strategy,100);
+        for (i = 0; i < 100; i++)
+        {
+            void* pointer = mymalloc(1);
+            if ( i > 0 && pointer != (lastPointer+1) )
+            {
+                printf("Allocation with %s was not sequential at %i; expected %p, actual %p\n", strategy_name(strategy), i,lastPointer+1,pointer);
+                return 1;
+            }
+            lastPointer = pointer;
+        }
+
+        for (i = 1; i < 100; i+= 2)
+        {
+            myfree(mem_pool() + i);
+        }
+
+        if (mem_holes() != correct_holes)
+        {
+            printf("Holes not counted as %d with %s\n", correct_holes, strategy_name(strategy));
+            return	1;
+        }
+
+        if (mem_allocated() != correct_alloc)
+        {
+            printf("Memory not reported as %d with %s\n", correct_alloc, strategy_name(strategy));
+            return	1;
+        }
+
+        if (mem_largest_free() != correct_largest_free)
+        {
+            printf("Largest memory block free not reported as %d with %s\n", correct_largest_free, strategy_name(strategy));
+            return	1;
+        }
+
+        for(i=0;i<100;i++) {
+            if(mem_is_alloc(mem_pool()+i) == i%2) {
+                printf("Byte %d in memory claims to ",i);
+                if(i%2)
+                    printf("not ");
+                printf("be allocated.  It should ");
+                if(!i%2)
+                    printf("not ");
+                printf("be allocated.\n");
+                return 1;
+            }
+        }
+    }
+
+    return 0;
+}
+
+
+/* basic sequential allocation followed by 50 frees, then another 50 allocs */
+int test_alloc_4(const char* strat_str) {
+    strategies strategy;
+    int lbound = 1;
+    int ubound = 4;
+
+    if (strategyFromString(strat_str))
+        lbound=ubound=strategyFromString(strat_str);
+
+    for (strategy = lbound; strategy <= ubound; strategy++)
+    {
+        int correct_holes = 0;
+        int correct_alloc = 100;
+        int correct_largest_free = 0;
+        int i;
+
+        void* lastPointer = NULL;
+        initmem(strategy,100);
+        for (i = 0; i < 100; i++)
+        {
+            void* pointer = mymalloc(1);
+            if ( i > 0 && pointer != (lastPointer+1) )
+            {
+                printf("Allocation with %s was not sequential at %i; expected %p, actual %p\n", strategy_name(strategy), i,lastPointer+1,pointer);
+                return 1;
+            }
+            lastPointer = pointer;
+        }
+
+        for (i = 1; i < 100; i+= 2)
+        {
+            myfree(mem_pool() + i);
+        }
+
+        for (i = 1; i < 100; i+=2)
+        {
+            void* pointer = mymalloc(1);
+            if ( i > 1 && pointer != (lastPointer+2) )
+            {
+                printf("Second allocation with %s was not sequential at %i; expected %p, actual %p\n", strategy_name(strategy), i,lastPointer+1,pointer);
+                return 1;
+            }
+            lastPointer = pointer;
+        }
+
+        if (mem_holes() != correct_holes)
+        {
+            printf("Holes not counted as %d with %s\n", correct_holes, strategy_name(strategy));
+            return	1;
+        }
+
+        if (mem_allocated() != correct_alloc)
+        {
+            printf("Memory not reported as %d with %s\n", correct_alloc, strategy_name(strategy));
+            return	1;
+        }
+
+        if (mem_largest_free() != correct_largest_free)
+        {
+            printf("Largest memory block free not reported as %d with %s\n", correct_largest_free, strategy_name(strategy));
+            return	1;
+        }
+
+    }
+
+    return 0;
+}
+
+
+//asdf
+
+
 int main() {
+    test_alloc_1("first");
+    test_alloc_2("first");
+    test_alloc_3("first");
+    test_alloc_4("first");
+    /*
     initmem(strategyFromString("first"), 500);
     print_short();
     void* a = mymalloc(100);
@@ -376,5 +685,5 @@ int main() {
     print_short();
     myfree(c);
     print_short();
+     */
 }
- */

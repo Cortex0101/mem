@@ -462,6 +462,7 @@ int run_memory_tests(int argc, char **argv)
  	return run_testrunner(argc,argv,tests,sizeof(tests)/sizeof(testentry_t));
 }
 
+/*
 int main(int argc, char **argv)
 {
   if( argc < 2) {
@@ -479,3 +480,4 @@ int main(int argc, char **argv)
   }
 
 }
+*/
