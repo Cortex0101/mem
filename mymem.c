@@ -140,6 +140,24 @@ void *allocBest(size_t requested) {
     return location;
 }
 
+void *allocWorst(size_t requested) {
+    Node* node = find_largest_unallocated_node(requested);
+    if (!node) {
+        return NULL;
+    }
+    void* location = node->ptr;
+    if (node->size == requested) {
+        node->alloc = '1';
+    }
+    else {
+        insert_before(node, requested, '1', node->ptr);
+        node->ptr += requested;
+        node->size -= requested;
+    }
+
+    return location;
+}
+
 void *mymalloc(size_t requested)
 {
 	assert((int)myStrategy > 0);
@@ -153,7 +171,7 @@ void *mymalloc(size_t requested)
 	  case Best:
 	            return allocBest(requested);
 	  case Worst:
-	            return NULL;
+	            return allocWorst(requested);
 	  case Next:
 	            return NULL;
 	  }
@@ -720,6 +738,11 @@ int main() {
     test_alloc_2("best");
     test_alloc_3("best");
     test_alloc_4("best");
+
+    test_alloc_1("worst");
+    test_alloc_2("worst");
+    test_alloc_3("worst");
+    test_alloc_4("worst");
     /*
     initmem(strategyFromString("first"), 500);
     print_short();

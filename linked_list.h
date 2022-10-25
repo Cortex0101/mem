@@ -195,6 +195,18 @@ Node * find_smallest_unallocated_node(size_t capacity) {
     return smallest;
 }
 
+Node* find_largest_unallocated_node(size_t requested) {
+    Node* node = linkedList->head;
+    Node* largest = find_first_node_with_capacity(requested);
+    while (node) {
+        if ((node->alloc == '0') && (largest->size < node->size)) {
+            largest = node;
+        }
+        node = node -> next;
+    }
+    return largest;
+}
+
 void traverse_forward(Node * nd, void(*callback)(Node *)) {
     while (nd) {
         (*callback)(nd);
