@@ -37,6 +37,7 @@ void create_list(size_t capacity) {
     linkedList = malloc(sizeof(LinkedList)) ;
     linkedList -> head = NULL ;
     linkedList -> tail = NULL ;
+    linkedList->size = 0;
 
     insert_first(capacity, '0', myMemory);
 }
@@ -94,10 +95,47 @@ void initmem(strategies strategy, size_t sz)
 void *allocFirst(size_t requested)
 {
     Node* node = find_first_node_with_capacity(requested);
+    if (!node) {
+        return NULL;
+    }
     void* location = node->ptr;
-    insert_before(node, requested, '1', node->ptr);
-    node->ptr += requested;
-    node->size -= requested;
+    if (node->size == requested) {
+        node->alloc = '1';
+    } else {
+        insert_before(node, requested, '1', node->ptr);
+        node->ptr += requested;
+        node->size -= requested;
+
+        /*
+        if (node->size == 0) {
+            remove_node_with_zero_size(node);
+        }
+         */
+    }
+
+    return location;
+}
+
+void *allocBest(size_t requested) {
+    Node* node = find_smallest_unallocated_node(requested);
+    if (!node) {
+        return NULL;
+    }
+    void* location = node->ptr;
+    if (node->size == requested) {
+        node->alloc = '1';
+    }
+    else {
+        insert_before(node, requested, '1', node->ptr);
+        node->ptr += requested;
+        node->size -= requested;
+
+        /*
+        if (node->size == 0) {
+            remove_node_with_zero_size(node);
+        }
+         */
+    }
 
     return location;
 }
@@ -113,7 +151,7 @@ void *mymalloc(size_t requested)
 	  case First:
 	            return allocFirst(requested);
 	  case Best:
-	            return NULL;
+	            return allocBest(requested);
 	  case Worst:
 	            return NULL;
 	  case Next:
@@ -150,7 +188,7 @@ int mem_holes()
     Node* last;
     Node* node = linkedList->head;
     while (node != NULL) {
-        if (node->alloc == '0' && node->ptr < myMemory + mySize && node->size != 0) {
+        if (node->alloc == '0' && (node->ptr < myMemory + mySize) && node->size != 0) {
             ++holes;
         }
 
@@ -631,6 +669,9 @@ int test_alloc_4(const char* strat_str) {
 
         for (i = 1; i < 100; i+=2)
         {
+            if (i == 99) {
+                int x  = 5+5;
+            }
             void* pointer = mymalloc(1);
             if ( i > 1 && pointer != (lastPointer+2) )
             {
@@ -672,6 +713,11 @@ int main() {
     test_alloc_2("first");
     test_alloc_3("first");
     test_alloc_4("first");
+
+    test_alloc_1("best");
+    test_alloc_2("best");
+    test_alloc_3("best");
+    test_alloc_4("best");
     /*
     initmem(strategyFromString("first"), 500);
     print_short();

@@ -21,6 +21,7 @@ struct Node {
 struct LinkedList {
     struct Node * head;
     struct Node * tail;
+    size_t size;
 };
 
 typedef struct Node Node;
@@ -41,6 +42,32 @@ void remove_succesor(Node *); // Remove the successor of a Node.
 void remove_node_with_ptr(void* ptr); // Remove Node from the list.
 void remove_head(); // Remove a node from the beginning.
 void remove_tail(); // Remove a node from the end.
+
+int get_size() {
+    int size = 0;
+    Node* nd = linkedList->head;
+    Node* last;
+    while (nd) {
+        ++size;
+        last = nd;
+        nd = nd->next;
+    }
+    return size;
+}
+
+Node* find_tail() {
+    Node* nd = linkedList->head;
+    Node* last;
+    while (nd) {
+        last = nd;
+        nd = nd->next;
+    }
+    return last;
+}
+
+void set_tail() {
+    linkedList->tail = find_tail();
+}
 
 unsigned is_empty(void) {
     return (linkedList -> head == NULL) && (linkedList -> tail == NULL);
@@ -66,6 +93,7 @@ void insert_first(int size, char alloc, void* ptr) {
         linkedList -> head -> prev = nd;
     // move the head to point to the new node.
     linkedList -> head = nd;
+    linkedList->size = get_size();
 }
 
 void insert_last(int size, char alloc, void* ptr) {
@@ -92,7 +120,7 @@ void insert_last(int size, char alloc, void* ptr) {
         linkedList -> tail = nd;
     }
 
-
+    linkedList->size = get_size();
 }
 
 void insert_after(Node * nd, int size, char alloc, void* ptr) {
@@ -116,6 +144,8 @@ void insert_after(Node * nd, int size, char alloc, void* ptr) {
     if (temp_nd -> next == NULL)
         // If the next of new node is NULL, it will be  the new tail node.
         linkedList -> tail = temp_nd;
+
+    linkedList->size = get_size();
 }
 
 void insert_before(Node * nd, int size, char alloc, void* ptr) {
@@ -139,14 +169,30 @@ void insert_before(Node * nd, int size, char alloc, void* ptr) {
     if (temp_nd -> prev == NULL)
         // If the previous of new node is NULL, it will be  the new head node.
         linkedList -> head = temp_nd;
+
+    linkedList->size = get_size();
 }
 
 Node * find_first_node_with_capacity(size_t capacity) {
     Node* node = linkedList->head;
+    Node* last;
     while (node && (node -> size < capacity || node -> alloc == '1') ) {
+        last = node;
         node = node -> next;
     }
     return node;
+}
+
+Node * find_smallest_unallocated_node(size_t capacity) {
+    Node* node = linkedList->head;
+    Node* smallest = find_first_node_with_capacity(capacity);
+    while (node) {
+        if ((node->alloc == '0') && (smallest->size > node->size)) {
+            smallest = node;
+        }
+        node = node -> next;
+    }
+    return smallest;
 }
 
 void traverse_forward(Node * nd, void(*callback)(Node *)) {
@@ -175,6 +221,40 @@ void remove_succesor(Node * nd) {
     free(temp_nd);
 }
 
+void remove_node_with_zero_size(Node* nd) {
+    /*
+    if (nd->prev) {
+        if (nd->prev->next)
+            nd->prev->next = nd->next;
+    }
+    if (nd->next) {
+        if (nd->next->prev)
+            nd->next->prev = nd->prev;
+    }
+    free(nd);
+    */
+
+    if (nd->prev != NULL) {
+        if (nd->prev->alloc == '0') {
+            if (nd->next != NULL) {
+                nd->next->prev = nd->prev;
+            }
+        }
+    } else {
+        nd->next->prev = NULL;
+    }
+    if (nd->next != NULL) {
+        nd->next->prev = nd->prev;
+        if (nd->prev != NULL) {
+            nd->prev->next = nd->next;
+        }
+    } else {
+        nd->prev->next = NULL;
+    }
+
+    linkedList->size = get_size();
+}
+
 void remove_node(Node * nd) {
     bool addedSizeToLeft = false;
     bool addedSizeToTheRight = false;
@@ -186,6 +266,7 @@ void remove_node(Node * nd) {
                 nd->next->prev = nd->prev;
             }
             addedSizeToLeft = true;
+            linkedList->size = get_size();
         }
     } else {
         nd->next->prev = NULL;
@@ -199,6 +280,7 @@ void remove_node(Node * nd) {
                 nd->prev->next = nd->next;
             }
             addedSizeToTheRight = true;
+            linkedList->size = get_size();
         }
     } else {
         nd->prev->next = NULL;
@@ -250,6 +332,8 @@ void remove_head() {
         linkedList -> tail = NULL;
     else
         linkedList -> head -> prev = NULL;
+
+    --linkedList->size;
 }
 
 void remove_tail() {
@@ -264,6 +348,8 @@ void remove_tail() {
         free(linkedList -> tail);
         linkedList -> tail = nd;
     }
+
+    linkedList->size = get_size();
 }
 
 #endif //MEM_LINKED_LIST_H
