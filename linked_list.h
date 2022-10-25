@@ -256,6 +256,43 @@ void remove_node_with_zero_size(Node* nd) {
 }
 
 void remove_node(Node * nd) {
+    // There are 3 cases
+    // There is a node to the left, and that is unallocated, so we need to to merge this one with the left one
+    // There is a node to the right, and that is unallocated so we need to merge this one and the one to the right.
+    // The node to both the left and right, and are unallocated so we need to merge all 3 - do it to the left
+
+    if ((nd->prev && nd->prev->alloc == '0') && (nd->next && nd->next->alloc == '0')) {
+        nd->prev->size += nd->size + nd->next->size;
+        if (nd->next->next) {
+            nd->prev->next = nd->next->next;
+            nd->next->next->prev = nd->prev;
+        } else {
+            nd->prev->next = NULL;
+        }
+        free(nd);
+        free(nd->next);
+    } else if (nd->prev && nd->prev->alloc == '0') {
+        nd->prev->size += nd->size;
+        nd->prev->next = nd->next;
+        if (nd->next) {
+            nd->next->prev = nd->prev;
+        } else {
+            nd->next->prev = NULL;
+        }
+        free(nd);
+    } else if (nd->next && nd->next->alloc == '0') {
+        nd->next->size += nd->size;
+        nd->next->prev = nd->prev;
+        if (nd->prev) {
+            nd->prev->next = nd->next;
+        } else {
+            nd->prev->next = NULL;
+        }
+        free(nd);
+    } else {
+        nd->alloc = '0';
+    }
+    /*
     bool addedSizeToLeft = false;
     bool addedSizeToTheRight = false;
     if (nd -> prev != NULL) {
@@ -297,6 +334,7 @@ void remove_node(Node * nd) {
     else {
         nd->alloc = '0';
     }
+     */
 }
 
 void remove_node_with_ptr(void* ptr) {

@@ -165,6 +165,7 @@ void *mymalloc(size_t requested)
 void myfree(void* block)
 {
     remove_node_with_ptr(block);
+    /*
     while (true) {
         Node* node = find_adjecent_unallocated_nodes();
         if (node == NULL) {
@@ -173,6 +174,7 @@ void myfree(void* block)
             remove_node_with_ptr(node->ptr);
         }
     }
+     */
 }
 
 /****** Memory status/property functions ******
