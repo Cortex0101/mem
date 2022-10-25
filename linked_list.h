@@ -207,6 +207,35 @@ Node* find_largest_unallocated_node(size_t requested) {
     return largest;
 }
 
+Node* lastAllocation = NULL;
+
+Node* find_next_unallocated_node(size_t size) {
+    if (lastAllocation == NULL) {
+        lastAllocation = linkedList->head;
+        return linkedList->head;
+    }
+
+    Node* node = lastAllocation;
+    if (node == linkedList->tail) {
+        node = linkedList->head;
+    }
+    Node* startingNode = node;
+
+    while (node && (node -> size < size|| node -> alloc == '1') ) {
+        node = node -> next;
+    }
+
+    if (node == NULL || (node -> size < size || node -> alloc == '1') ) {
+        node = linkedList->head;
+        while (node && (node -> size < size|| node -> alloc == '1') && node != startingNode) {
+            node = node -> next;
+        }
+    }
+
+    lastAllocation = node;
+    return node; // Second allocation with next was not sequential at 3; expected 000002120bd51524, actual 000002120bd514c1
+}
+
 void traverse_forward(Node * nd, void(*callback)(Node *)) {
     while (nd) {
         (*callback)(nd);

@@ -79,6 +79,7 @@ void initmem(strategies strategy, size_t sz)
 	/* TODO: release any other memory you were using for bookkeeping when doing a re-initialization! */
     free(head);
     free(linkedList);
+    lastAllocation = NULL;
 	
 	/* TODO: Initialize memory management structure. */
     myMemory = malloc(sz);
@@ -158,6 +159,24 @@ void *allocWorst(size_t requested) {
     return location;
 }
 
+void *allocNext(size_t requested) {
+    Node* node = find_next_unallocated_node(requested);
+    if (!node) {
+        return NULL;
+    }
+    void* location = node->ptr;
+    if (node->size == requested) {
+        node->alloc = '1';
+    }
+    else {
+        insert_before(node, requested, '1', node->ptr);
+        node->ptr += requested;
+        node->size -= requested;
+    }
+
+    return location;
+}
+
 void *mymalloc(size_t requested)
 {
 	assert((int)myStrategy > 0);
@@ -173,7 +192,7 @@ void *mymalloc(size_t requested)
 	  case Worst:
 	            return allocWorst(requested);
 	  case Next:
-	            return NULL;
+	            return allocNext(requested);
 	  }
 	return NULL;
 }
@@ -689,9 +708,6 @@ int test_alloc_4(const char* strat_str) {
 
         for (i = 1; i < 100; i+=2)
         {
-            if (i == 99) {
-                int x  = 5+5;
-            }
             void* pointer = mymalloc(1);
             if ( i > 1 && pointer != (lastPointer+2) )
             {
@@ -729,6 +745,7 @@ int test_alloc_4(const char* strat_str) {
 
 
 int main() {
+    /*
     test_alloc_1("first");
     test_alloc_2("first");
     test_alloc_3("first");
@@ -743,6 +760,12 @@ int main() {
     test_alloc_2("worst");
     test_alloc_3("worst");
     test_alloc_4("worst");
+     */
+
+    test_alloc_1("next");
+    test_alloc_2("next");
+    test_alloc_3("next");
+    test_alloc_4("next");
     /*
     initmem(strategyFromString("first"), 500);
     print_short();
