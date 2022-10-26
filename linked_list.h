@@ -180,6 +180,12 @@ Node * find_first_node_with_capacity(size_t capacity) {
         last = node;
         node = node -> next;
     }
+    if (!node) {
+        return NULL;
+        if (node->alloc == '1' || node->size < capacity) {
+            return NULL;
+        }
+    }
     return node;
 }
 
@@ -216,9 +222,6 @@ Node* find_next_unallocated_node(size_t size) {
     }
 
     Node* node = lastAllocation;
-    if (node == linkedList->tail) {
-        node = linkedList->head;
-    }
     Node* startingNode = node;
 
     while (node && (node -> size < size|| node -> alloc == '1') ) {
@@ -232,7 +235,6 @@ Node* find_next_unallocated_node(size_t size) {
         }
     }
 
-    lastAllocation = node;
     return node; // Second allocation with next was not sequential at 3; expected 000002120bd51524, actual 000002120bd514c1
 }
 
@@ -260,6 +262,7 @@ void remove_succesor(Node * nd) {
     nd -> next = temp_nd -> next;
     temp_nd -> next -> prev = nd;
     free(temp_nd);
+    temp_nd = NULL;
 }
 
 void remove_node_with_zero_size(Node* nd) {
@@ -310,8 +313,10 @@ void remove_node(Node * nd) {
         } else {
             nd->prev->next = NULL;
         }
-        free(nd);
         free(nd->next);
+        nd->next = NULL;
+        free(nd);
+        nd = NULL;
     } else if (nd->prev && nd->prev->alloc == '0') {
         nd->prev->size += nd->size;
         nd->prev->next = nd->next;
@@ -321,15 +326,18 @@ void remove_node(Node * nd) {
             nd->next->prev = NULL;
         }
         free(nd);
+        nd = NULL;
     } else if (nd->next && nd->next->alloc == '0') {
-        nd->next->size += nd->size;
-        nd->next->prev = nd->prev;
-        if (nd->prev) {
-            nd->prev->next = nd->next;
+        nd->size += nd->next->size;
+        Node* temp = nd->next;
+        if (nd->next->next) {
+            nd->next->next->prev = nd;
         } else {
-            nd->prev->next = NULL;
+            nd->next->next = NULL;
         }
-        free(nd);
+        nd->next = nd->next->next;
+        free(temp);
+        temp = NULL;
     } else {
         nd->alloc = '0';
     }
@@ -383,7 +391,10 @@ void remove_node_with_ptr(void* ptr) {
     while (node && (node->ptr != ptr)) {
         node = node -> next;
     }
-    remove_node(node);
+    if (node) {
+        if (node->ptr == ptr)
+            remove_node(node);
+    }
 }
 
 Node* find_adjecent_unallocated_nodes() {
@@ -407,6 +418,7 @@ void remove_head() {
     nd = linkedList -> head;
     linkedList -> head = nd -> next;
     free(nd);
+    nd = NULL;
     if (linkedList -> head == NULL)
         linkedList -> tail = NULL;
     else
